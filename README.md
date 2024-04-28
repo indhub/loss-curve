@@ -23,3 +23,11 @@ python tinystories/make_tfrecord.py \
 ```
 
 There are ~2717000 training samples and ~27000 validation samples.
+
+## Get sentencepiece
+
+```sh
+cd sentencepiece
+curl https://huggingface.co/t5-base/resolve/main/spiece.model -o t5-base
+```
+

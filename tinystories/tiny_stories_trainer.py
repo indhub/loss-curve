@@ -24,8 +24,7 @@ from axlearn.common import (
 from axlearn.experiments.trainer_config_utils import TrainerConfigFn
 from axlearn.experiments.text.gpt import tiny_stories
 
-from axlearn.common.input_text_test import tokenizers_dir
-t5_sentence_piece_vocab_file = os.path.join(tokenizers_dir, "sentencepiece/t5-base")
+t5_sentence_piece_vocab_file = os.path.join(os.getcwd(), "sentencepiece/t5-base")
 
 def ds_fn(in_data_path) -> input_tf_data.BuildDatasetFn:
 
@@ -41,7 +40,8 @@ def ds_fn(in_data_path) -> input_tf_data.BuildDatasetFn:
     return ds_fn
 
 def _eval_input_sources() -> Dict[str, InstantiableConfig]:
-    input_source = config_for_function(ds_fn).set(in_data_path="/home/ec2-user/tinystories-val.tfrecord")
+    tf_record_path = os.path.join(os.getcwd(), "data/tinystories-valid.tfrecord")
+    input_source = config_for_function(ds_fn).set(in_data_path=tf_record_path)
     vocab_cfg=config_for_class(seqio.SentencePieceVocabulary).set(sentencepiece_model_file=t5_sentence_piece_vocab_file)
     processor=config_for_function(text_to_lm_eval_input).set(
         vocab_cfg=vocab_cfg,
@@ -58,7 +58,8 @@ def named_trainer_configs() -> Dict[str, TrainerConfigFn]:
     arch = "fuji"
     vocab_size = 32_768
     vocab_cfg=config_for_class(seqio.SentencePieceVocabulary).set(sentencepiece_model_file=t5_sentence_piece_vocab_file)
-    input_source = config_for_function(ds_fn).set(in_data_path="/home/ec2-user/tinystories-train.tfrecord")
+    tf_record_path = os.path.join(os.getcwd(), "data/tinystories-train.tfrecord")
+    input_source = config_for_function(ds_fn).set(in_data_path=tf_record_path)
     preprocessor=config_for_function(lm_text_preprocessor).set(max_padding_fraction=0.5,
                                                                vocab_cfg=vocab_cfg,
                                                                max_sequence_length=fuji.MAX_SEQUENCE_LENGTH,

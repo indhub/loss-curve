@@ -1,6 +1,8 @@
 from typing import Dict
 import os
 
+import tensorflow as tf
+
 from axlearn.common.config import InstantiableConfig, config_for_function, config_for_class
 from axlearn.common.input_lm import lm_text_preprocessor, text_to_lm_eval_input, seqio
 from axlearn.common.trainer import SpmdTrainer
@@ -25,8 +27,21 @@ from axlearn.experiments.text.gpt import tiny_stories
 from axlearn.common.input_text_test import tokenizers_dir
 t5_sentence_piece_vocab_file = os.path.join(tokenizers_dir, "sentencepiece/t5-base")
 
+def ds_fn(in_data_path) -> input_tf_data.BuildDatasetFn:
+
+    def _parse_function(proto):
+        keys_to_features = {'text': tf.io.FixedLenFeature([], tf.string)}
+        parsed_features = tf.io.parse_single_example(proto, keys_to_features)
+        return parsed_features
+
+    def ds_fn() -> tf.data.Dataset:
+        dataset = tf.data.TFRecordDataset(in_data_path)
+        return dataset.map(_parse_function)
+
+    return ds_fn
+
 def _eval_input_sources() -> Dict[str, InstantiableConfig]:
-    input_source = config_for_function(tiny_stories.ds_fn).set(in_data_path="/home/ec2-user/tinystories-val.tfrecord")
+    input_source = config_for_function(ds_fn).set(in_data_path="/home/ec2-user/tinystories-val.tfrecord")
     vocab_cfg=config_for_class(seqio.SentencePieceVocabulary).set(sentencepiece_model_file=t5_sentence_piece_vocab_file)
     processor=config_for_function(text_to_lm_eval_input).set(
         vocab_cfg=vocab_cfg,
@@ -43,7 +58,7 @@ def named_trainer_configs() -> Dict[str, TrainerConfigFn]:
     arch = "fuji"
     vocab_size = 32_768
     vocab_cfg=config_for_class(seqio.SentencePieceVocabulary).set(sentencepiece_model_file=t5_sentence_piece_vocab_file)
-    input_source = config_for_function(tiny_stories.ds_fn).set(in_data_path="/home/ec2-user/tinystories-train.tfrecord")
+    input_source = config_for_function(ds_fn).set(in_data_path="/home/ec2-user/tinystories-train.tfrecord")
     preprocessor=config_for_function(lm_text_preprocessor).set(max_padding_fraction=0.5,
                                                                vocab_cfg=vocab_cfg,
                                                                max_sequence_length=fuji.MAX_SEQUENCE_LENGTH,

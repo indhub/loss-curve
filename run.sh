@@ -1,14 +1,14 @@
 MODULE="tinystories.tiny_stories_trainer"
-CONFIG_MODULE="tinystories.tiny_stories_config"
+CONFIG_MODULE="tinystories.tiny_stories_trainer"
 CONFIG="fuji-testgpu"
-BACKEND="tpu"
+BACKEND="cpu"
 
 COORDINATOR_ADDR="127.0.0.1:5551"
 NUM_PROC="1"
 PROC_ID="0"
 
 TRAINER_DIR="/tmp/trainer_dir"
-DATA_DIR="unused"
+DATA_DIR="embedded_in_code"
 
 rm -rf ${TRAINER_DIR}
 mkdir ${TRAINER_DIR}

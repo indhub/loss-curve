@@ -44,9 +44,10 @@ def get_trainer_kwargs(model_size: str, *, vocab_size: int) -> Dict[str, Any]:
                 num_layers=4,
                 hidden_dim=128 * 8,
                 num_heads=8,
+                dropout_rate=0,
             ),
             learner_kwargs=dict(peak_lr=1e-4, lr_warmup_steps=500, weight_decay=1e-5),
-            train_batch_size=8,
+            train_batch_size=32,
             max_step=20000,
             mesh_shape=mesh_shape_from_axes(fsdp=-1),
         )

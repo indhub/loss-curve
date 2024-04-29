@@ -7,7 +7,7 @@ from axlearn.common.config import InstantiableConfig, config_for_function, confi
 from axlearn.common.input_lm import lm_text_preprocessor, text_to_lm_eval_input, seqio
 from axlearn.common.trainer import SpmdTrainer
 from axlearn.experiments.text.common import DataMixtureComponent, vocab
-from axlearn.experiments.text.gpt import fuji
+from tinystories import fuji
 from axlearn.experiments.text.gpt.common import (
     evaler_config_dict,
     get_trainer_config_fn,
@@ -22,7 +22,6 @@ from axlearn.common import (
 )
 
 from axlearn.experiments.trainer_config_utils import TrainerConfigFn
-from axlearn.experiments.text.gpt import tiny_stories
 
 t5_sentence_piece_vocab_file = os.path.join(os.getcwd(), "sentencepiece/t5-base")
 
@@ -77,7 +76,7 @@ def named_trainer_configs() -> Dict[str, TrainerConfigFn]:
         kwargs.pop("max_sequence_length", 0)
         config_map[config_name] = get_trainer_config_fn(
             train_input_source=processed_input_source,
-            input_partition_type = DataPartitionType.DATA,
+            #input_partition_type = DataPartitionType.DATA,
             evalers=evaler_config_dict(_eval_input_sources()),
             **kwargs,
         )

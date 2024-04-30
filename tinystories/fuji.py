@@ -5,6 +5,7 @@ from axlearn.common.attention import (
     CausalAttentionLogitBiasLayer,
     FusedQKVLinear,
     RepeatedTransformerLayer,
+    StackedTransformerLayer,
     RoFormerQKVLinear,
 )
 from axlearn.common.embedding import TransformerTextEmbeddings
@@ -12,9 +13,17 @@ from axlearn.common.layers import RMSNorm
 from axlearn.experiments.text.gpt.common import STEP_DTYPE, learner_config, mesh_shape_from_axes
 from axlearn.experiments.text.gpt.common import model_config as common_model_config
 from axlearn.experiments.text.gpt.common import scaled_hidden_dim
+from axlearn.common.utils import DataPartitionType
+import jax
+import os
 
 MODEL_SIZES = ("test", "7B", "testgpu", "testtrn")
-MAX_SEQUENCE_LENGTH = 512
+MAX_SEQUENCE_LENGTH=512
+TRN_MODEL_AXIS_SIZE=8
+GRADIENT_ACCUMULATION_MICROBATCHES=8
+
+if "NEURON_CC_FLAGS" in os.environ:
+    os.environ["NEURON_CC_FLAGS"] += " --internal-hlo2tensorizer-options='--verify-hlo --num-concat-graphs=" + str(GRADIENT_ACCUMULATION_MICROBATCHES) + '\''
 
 def get_trainer_kwargs(model_size: str, *, vocab_size: int) -> Dict[str, Any]:
     """Construct default trainer kwargs given a model size."""
@@ -33,6 +42,7 @@ def get_trainer_kwargs(model_size: str, *, vocab_size: int) -> Dict[str, Any]:
                 peak_lr=6e-4,
                 weight_decay=0.01,
             ),
+            input_partition_type=DataPartitionType.FULL,
             max_sequence_length=64,
             train_batch_size=16,
             max_step=3000,
@@ -47,6 +57,7 @@ def get_trainer_kwargs(model_size: str, *, vocab_size: int) -> Dict[str, Any]:
                 dropout_rate=0,
             ),
             learner_kwargs=dict(peak_lr=1e-4, lr_warmup_steps=500, weight_decay=1e-5),
+            input_partition_type=DataPartitionType.FULL,
             train_batch_size=32,
             max_step=20000,
             mesh_shape=mesh_shape_from_axes(fsdp=-1),
@@ -57,11 +68,15 @@ def get_trainer_kwargs(model_size: str, *, vocab_size: int) -> Dict[str, Any]:
                 num_layers=4,
                 hidden_dim=128 * 8,
                 num_heads=8,
+                dropout_rate=0,
             ),
-            learner_kwargs=dict(peak_lr=3e-4, weight_decay=0.1),
-            train_batch_size=8,
+            learner_kwargs=dict(peak_lr=1e-4, lr_warmup_steps=500, weight_decay=1e-5),
+            input_partition_type = DataPartitionType.DATA if hasattr(DataPartitionType, 'DATA') else DataPartitionType.FULL,
+            max_sequence_length=MAX_SEQUENCE_LENGTH,
+            train_batch_size=int((jax.device_count()/TRN_MODEL_AXIS_SIZE)*GRADIENT_ACCUMULATION_MICROBATCHES),
             max_step=20000,
-            mesh_shape=mesh_shape_from_axes(fsdp=-1),
+            mesh_shape=mesh_shape_from_axes(data=-1, model=TRN_MODEL_AXIS_SIZE),
+            eval_batch_size=int((jax.device_count()/TRN_MODEL_AXIS_SIZE)*GRADIENT_ACCUMULATION_MICROBATCHES),
         )
     elif model_size == "7B":
         trainer_kwargs = dict(
@@ -71,6 +86,7 @@ def get_trainer_kwargs(model_size: str, *, vocab_size: int) -> Dict[str, Any]:
                 num_heads=32,
             ),
             learner_kwargs=dict(peak_lr=3e-4, weight_decay=0.1),
+            input_partition_type=DataPartitionType.FULL,
             train_batch_size=4 * 1024 * 1024 // MAX_SEQUENCE_LENGTH,  # 4M tokens.
             max_step=500_000,  # 2T tokens // 4M tokens/step.
             mesh_shape=mesh_shape_from_axes(fsdp=-1),
@@ -93,6 +109,8 @@ def get_trainer_kwargs(model_size: str, *, vocab_size: int) -> Dict[str, Any]:
     trainer_kwargs["model_cfg"] = model_config(**model_kwargs)
     trainer_kwargs["learner_cfg"] = learner_config(
         max_step=trainer_kwargs["max_step"],
+        # gradient_accumulation_microbatches=GRADIENT_ACCUMULATION_MICROBATCHES,
+        **({"gradient_accumulation_microbatches": GRADIENT_ACCUMULATION_MICROBATCHES} if hasattr(DataPartitionType, 'DATA') else {}),
         **trainer_kwargs.pop("learner_kwargs"),
     )
     # pylint: enable=use-dict-literal
@@ -131,7 +149,7 @@ def model_config(
         hidden_dim=hidden_dim,
         num_heads=num_heads,
         vocab_size=vocab_size,
-        stack_cfg=RepeatedTransformerLayer.default_config(),
+        stack_cfg=StackedTransformerLayer.default_config(),
         activation_fn=activation_fn,
         ffn_dim=ffn_dim,
         normalization=RMSNorm.default_config().set(eps=1e-5, forward_dtype=None),

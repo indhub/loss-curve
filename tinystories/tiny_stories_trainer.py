@@ -76,7 +76,6 @@ def named_trainer_configs() -> Dict[str, TrainerConfigFn]:
         kwargs.pop("max_sequence_length", 0)
         config_map[config_name] = get_trainer_config_fn(
             train_input_source=processed_input_source,
-            #input_partition_type = DataPartitionType.DATA,
             evalers=evaler_config_dict(_eval_input_sources()),
             **kwargs,
         )

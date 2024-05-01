@@ -7,9 +7,11 @@ Conda env named `curve` in `trn`
 ## Download dataset
 
 ```sh
+mkdir data
 cd data
 wget https://huggingface.co/datasets/roneneldan/TinyStories/resolve/main/TinyStoriesV2-GPT4-train.txt
 wget https://huggingface.co/datasets/roneneldan/TinyStories/resolve/main/TinyStoriesV2-GPT4-valid.txt
+cd ..
 ```
 
 ## Convert to tfrecords
@@ -27,7 +29,9 @@ There are ~2717000 training samples and ~27000 validation samples.
 ## Get sentencepiece
 
 ```sh
+mkdir sentencepiece
 cd sentencepiece
 curl https://huggingface.co/t5-base/resolve/main/spiece.model -o t5-base
+cd ..
 ```
 

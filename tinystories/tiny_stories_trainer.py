@@ -63,7 +63,8 @@ def named_trainer_configs() -> Dict[str, TrainerConfigFn]:
                                                                vocab_cfg=vocab_cfg,
                                                                max_sequence_length=fuji.MAX_SEQUENCE_LENGTH,
                                                                replace_newlines_with="<n>",
-                                                               window_size=256)
+                                                               window_size=256,
+                                                               shuffle_buffer_size=0)
     processed_input_source = config_for_function(input_tf_data.with_processor).set(
             source=input_source,
             processor=preprocessor)
